@@ -80,14 +80,19 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                                                  HttpServletResponse response, AuthenticationContext context)
             throws AuthenticationFailedException {
         try {
-            isCompleted = false;
-            if(enrolUserBody == null) {
+            if(!isCompleted && enrolUserBody == null) {
                 Map<String, String> authenticatorProperties = context
                         .getAuthenticatorProperties();
                 if (authenticatorProperties != null) {
                     enrolUserBody = enrolUser(authenticatorProperties);
-                    response.sendRedirect(enrolUserBody.substring(enrolUserBody.indexOf("https"), enrolUserBody.indexOf("'/>")));
-                    log.info("The QR code is successfully displayed.");
+                    if (enrolUserBody == null) {
+                        throw new AuthenticationFailedException("Error while ing the QR code");
+                    } else {
+                        response.sendRedirect(enrolUserBody.substring(enrolUserBody.indexOf("https"), enrolUserBody.indexOf("'/>")));
+                        if (log.isDebugEnabled()) {
+                            log.debug("The QR code is successfully displayed.");
+                        }
+                    }
 //                sendRESTCall("http://localhost:8080/travelocity.com/samlsso", "", "", "GET");
                 } else {
                     if (log.isDebugEnabled()) {
@@ -103,6 +108,8 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             throw new AuthenticationFailedException("Exception while showing the QR code: " + e.getMessage(), e);
         } catch (IndexOutOfBoundsException e) {
             throw new AuthenticationFailedException("Unable to get QR code: " + e.getMessage(), e);
+        } finally {
+            isCompleted = false;
         }
         return;
     }
@@ -154,18 +161,29 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             String urlToCheckEntrolment = tiqrEP + "/enrol.php";
             int status = 0;
             int iteration = 0;
+            log.info("Waiting for getting enrolment status...");
             while (true) {
                 try {
                     String res = sendRESTCall(urlToCheckEntrolment, "", "action=getStatus&sessId=" + sessionId, "POST");
+                    if (res.startsWith("Failed:")) {
+                        throw new AuthenticationFailedException("Unable to connect to the Tiqr: " + res.replace("Failed: ", ""));
+                    }
+                    log.info("@@@@@@@@@@@@@@@@@@@@@"+res);
                     status = Integer.parseInt(res.substring(res.indexOf("Enrolment status: "), res.indexOf("<!DOCTYPE")).replace("Enrolment status: ","").trim());
-                    log.info("Enrolment status: "+status);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Enrolment status: " + status);
+                    }
                     if (status == 5) {
-                        log.info("Successfully enrolled the user with User ID:"
-                                + authenticatorProperties.get(TiqrConstants.ENROLL_USERID)
-                                + "and Display Name:" + authenticatorProperties.get(TiqrConstants.ENROLL_DISPLAYNAME));
+                        if (log.isDebugEnabled()) {
+                            log.debug("Successfully enrolled the user with User ID:"
+                                    + authenticatorProperties.get(TiqrConstants.ENROLL_USERID)
+                                    + "and Display Name:" + authenticatorProperties.get(TiqrConstants.ENROLL_DISPLAYNAME));
+                        }
                         break;
                     }
-                    log.info("Enrolment pending...");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Enrolment pending...");
+                    }
                     Thread.sleep(10000);
                     iteration++;
                     if (iteration == 11) {
@@ -181,20 +199,27 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 } catch (IndexOutOfBoundsException e) {
                     throw new AuthenticationFailedException("Error while getting the enrolment status"
                             + e.getMessage(), e);
+                } finally {
+                    isCompleted = true;
+                    qrCode = null;
                 }
             }
             if (status == 5) {
                 context.setSubject("Successfully enrolled the user");
-                log.info("Successfully enrolled the user");
+                if (log.isDebugEnabled()) {
+                    log.debug("Successfully enrolled the user");
+                }
             } else {
                 context.setSubject("Enrolment process is failed");
                 throw new AuthenticationFailedException("Enrolment process is Failed");
             }
-            isCompleted = true;
-            qrCode = null;
         }
         catch (Exception e) {
             throw new AuthenticationFailedException(e.getMessage(), e);
+        } finally {
+            isCompleted = true;
+            qrCode = null;
+            enrolUserBody = null;
         }
     }
 
@@ -213,7 +238,13 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             String formParameters = "uid=" + userId + System.currentTimeMillis() + "&displayName=" + diaplayName;
             String result = sendRESTCall(urlToEntrol, "", formParameters, "POST");
             try {
+                if (result.startsWith("Failed:")) {
+                    return null;
+                }
                 sessionId = result.substring(result.indexOf("Session id: ["), result.indexOf("<img")).replace("Session id: [", "").replace("]","").trim();
+                if (log.isDebugEnabled()) {
+                    log.debug("Tiqr Session ID: " + sessionId);
+                }
                 qrCode = result.substring(result.indexOf("<img"), result.indexOf("</body>"));
                 return qrCode;
             } catch (NullPointerException e) {
@@ -254,7 +285,10 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             }
             connection.disconnect();
         } catch (Exception e) {
-            return "Failed" + e.getMessage();
+            if (log.isDebugEnabled()) {
+                log.debug("Failed: " + e.getMessage());
+            }
+            return "Failed: " + e.getMessage();
         }
         String rs = responseString.toString();
         return rs;
