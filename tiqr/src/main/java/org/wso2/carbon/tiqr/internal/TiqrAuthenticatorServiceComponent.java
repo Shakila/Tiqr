@@ -11,28 +11,28 @@ import java.util.Hashtable;
 /**
  * @scr.component name="identity.application.authenticator.tiqr.component" immediate="true"
  */
-public class LinkedInAuthenticatorServiceComponent {
+public class TiqrAuthenticatorServiceComponent {
 
-    private static Log log = LogFactory.getLog(LinkedInAuthenticatorServiceComponent.class);
+    private static Log log = LogFactory.getLog(TiqrAuthenticatorServiceComponent.class);
 
     protected void activate(ComponentContext ctxt) {
         try {
-            TiqrAuthenticator linkedInAuthenticator = new TiqrAuthenticator();
+            TiqrAuthenticator tiqrAuthenticator = new TiqrAuthenticator();
             Hashtable<String, String> props = new Hashtable<String, String>();
 
             ctxt.getBundleContext().registerService(ApplicationAuthenticator.class.getName(),
-                    linkedInAuthenticator, props);
+                    tiqrAuthenticator, props);
             if (log.isDebugEnabled()) {
-                log.debug("LinkedIn authenticator is activated");
+                log.debug("Tiqr authenticator is activated");
             }
         } catch (Throwable e) {
-            log.fatal("LinkedIn authenticator authenticator ", e);
+            log.fatal("Tiqr authenticator authenticator ", e);
         }
     }
 
     protected void deactivate(ComponentContext ctxt) {
         if (log.isDebugEnabled()) {
-            log.debug("LinkedIn authenticator is deactivated");
+            log.debug("Tiqr authenticator is deactivated");
         }
     }
 }
