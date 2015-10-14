@@ -235,7 +235,8 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
         String diaplayName = authenticatorProperties
                 .get(TiqrConstants.ENROLL_DISPLAYNAME);
         if (userId != null && diaplayName != null) {
-            String formParameters = "uid=" + userId + System.currentTimeMillis() + "&displayName=" + diaplayName;
+            String formParameters = "uid=" + userId + "&displayName=" + diaplayName;
+//            String formParameters = "uid=" + userId + System.currentTimeMillis() + "&displayName=" + diaplayName;
             String result = sendRESTCall(urlToEntrol, "", formParameters, "POST");
             try {
                 if (result.startsWith("Failed:")) {
