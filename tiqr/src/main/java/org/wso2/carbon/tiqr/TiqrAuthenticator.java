@@ -168,7 +168,6 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                     if (res.startsWith("Failed:")) {
                         throw new AuthenticationFailedException("Unable to connect to the Tiqr: " + res.replace("Failed: ", ""));
                     }
-                    log.info("@@@@@@@@@@@@@@@@@@@@@"+res);
                     status = Integer.parseInt(res.substring(res.indexOf("Enrolment status: "), res.indexOf("<!DOCTYPE")).replace("Enrolment status: ","").trim());
                     if (log.isDebugEnabled()) {
                         log.debug("Enrolment status: " + status);
