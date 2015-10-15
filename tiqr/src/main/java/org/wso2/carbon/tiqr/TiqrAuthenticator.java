@@ -65,7 +65,6 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             log.trace("Inside TiqrAuthenticator.canHandle()");
         }
         try {
-            if(isCompleted) {qrCode = null;}
             return (qrCode != null && qrCode.startsWith("<img alt=\"QR\""));
         } catch (NullPointerException e) {
             return false;
@@ -198,10 +197,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 } catch (IndexOutOfBoundsException e) {
                     throw new AuthenticationFailedException("Error while getting the enrolment status"
                             + e.getMessage(), e);
-                } finally {
-                    isCompleted = true;
-                    qrCode = null;
-                }
+                } 
             }
             if (status == 5) {
                 context.setSubject("Successfully enrolled the user");
