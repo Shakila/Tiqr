@@ -19,24 +19,26 @@
 
 package org.wso2.carbon.tiqr;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.amber.oauth2.common.utils.JSONUtils;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
+import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
+import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.Property;
 
 public class TiqrAuthenticator extends AbstractApplicationAuthenticator implements FederatedApplicationAuthenticator {
@@ -56,9 +58,6 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 + ":8080";
     }
 
-    /**
-     * Check whether the authentication or logout request can be handled by the authenticator
-     */
     @Override
     public boolean canHandle(HttpServletRequest request) {
         if (log.isTraceEnabled()) {
@@ -87,12 +86,11 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                     if (enrolUserBody == null) {
                         throw new AuthenticationFailedException("Error while ing the QR code");
                     } else {
-                        response.sendRedirect(enrolUserBody.substring(enrolUserBody.indexOf("https"), enrolUserBody.indexOf("'/>")));
+                        postContent(response, enrolUserBody);
                         if (log.isDebugEnabled()) {
                             log.debug("The QR code is successfully displayed.");
                         }
                     }
-//                sendRESTCall("http://localhost:8080/travelocity.com/samlsso", "", "", "GET");
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug("Error while retrieving properties. Authenticator Properties cannot be null");
@@ -101,9 +99,11 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                             "Error while retrieving properties. Authenticator Properties cannot be null");
                 }
             }
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new AuthenticationFailedException("Exception while showing the QR code: " + e.getMessage(), e);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             throw new AuthenticationFailedException("Exception while showing the QR code: " + e.getMessage(), e);
         } catch (IndexOutOfBoundsException e) {
             throw new AuthenticationFailedException("Unable to get QR code: " + e.getMessage(), e);
@@ -185,7 +185,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                     Thread.sleep(10000);
                     iteration++;
                     if (iteration == 11) {
-                        log.warn("Enrolment timed out.");
+                        log.warn("Enrolment timed out."+status);
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -197,13 +197,16 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 } catch (IndexOutOfBoundsException e) {
                     throw new AuthenticationFailedException("Error while getting the enrolment status"
                             + e.getMessage(), e);
-                } 
+                }
             }
             if (status == 5) {
-                context.setSubject("Successfully enrolled the user");
-                if (log.isDebugEnabled()) {
-                    log.debug("Successfully enrolled the user");
+                String jo = "{\"status\":\""+status+"\"}";
+                Map<String, Object> claims = JSONUtils.parseJSON(jo);
+                if (claims != null && ! claims.isEmpty()) {
+                    context.setSubjectAttributes(getSubjectAttributes(claims));
                 }
+                context.setSubject("Successfully enrolled the user");
+                log.info("Successfully enrolled the user");
             } else {
                 context.setSubject("Enrolment process is failed");
                 throw new AuthenticationFailedException("Enrolment process is Failed");
@@ -231,7 +234,6 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 .get(TiqrConstants.ENROLL_DISPLAYNAME);
         if (userId != null && diaplayName != null) {
             String formParameters = "uid=" + userId + "&displayName=" + diaplayName;
-//            String formParameters = "uid=" + userId + System.currentTimeMillis() + "&displayName=" + diaplayName;
             String result = sendRESTCall(urlToEntrol, "", formParameters, "POST");
             try {
                 if (result.startsWith("Failed:")) {
@@ -288,6 +290,53 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
         }
         String rs = responseString.toString();
         return rs;
+    }
+
+    public void postContent(HttpServletResponse response, String image)
+            throws IOException
+    {
+        response.setContentType("text/html");
+        PrintWriter out = null;
+        try {
+            out = response.getWriter();
+            out.println("<title>Tiqr QR</title>" +
+                    "<body bgcolor=FFFFFF>");
+            out.println("<h2>Scan this QR</h2><br/>" + image);
+            out.println("</body");
+            out.close();
+            if (log.isDebugEnabled()) {
+                log.debug("The QR code is successfully displayed.");
+            }
+        } catch (IOException e) {
+            log.error("Unable to show the QR code");
+        }
+    }
+
+    /**
+     * @param claimMap
+     * @return
+     */
+
+    protected Map<ClaimMapping, String> getSubjectAttributes(
+            Map<String, Object> claimMap) {
+
+        Map<ClaimMapping, String> claims = new HashMap<ClaimMapping, String>();
+
+        if (claimMap != null) {
+            for (Map.Entry<String, Object> entry : claimMap.entrySet()) {
+                claims.put(ClaimMapping.build(entry.getKey(),
+                        entry.getKey(), null, false), entry.getValue()
+                        .toString());
+                if (log.isDebugEnabled()) {
+                    log.debug("Adding claim from end-point data mapping : "
+                            + entry.getKey() + " <> " + " : "
+                            + entry.getValue());
+                }
+
+            }
+        }
+
+        return claims;
     }
 
     /**
