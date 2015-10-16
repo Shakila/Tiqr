@@ -185,7 +185,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                     Thread.sleep(10000);
                     iteration++;
                     if (iteration == 11) {
-                        log.warn("Enrolment timed out."+status);
+                        log.warn("Enrolment timed out.");
                         break;
                     }
                 } catch (InterruptedException e) {
@@ -319,9 +319,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
 
     protected Map<ClaimMapping, String> getSubjectAttributes(
             Map<String, Object> claimMap) {
-
         Map<ClaimMapping, String> claims = new HashMap<ClaimMapping, String>();
-
         if (claimMap != null) {
             for (Map.Entry<String, Object> entry : claimMap.entrySet()) {
                 claims.put(ClaimMapping.build(entry.getKey(),
@@ -335,7 +333,6 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
 
             }
         }
-
         return claims;
     }
 
