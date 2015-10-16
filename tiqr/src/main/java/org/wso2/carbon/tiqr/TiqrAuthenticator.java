@@ -20,12 +20,8 @@
 package org.wso2.carbon.tiqr;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.*;
+import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -53,11 +49,23 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
      */
     protected String getTiqrEndpoint(
             Map<String, String> authenticatorProperties) {
-
         return "http://" + authenticatorProperties.get(TiqrConstants.TIQR_CLIENTIP)
                 + ":8080";
     }
 
+    @Override
+    public AuthenticatorFlowStatus process(HttpServletRequest request, HttpServletResponse response,
+                                           AuthenticationContext context)
+            throws AuthenticationFailedException, LogoutFailedException {
+        if(context.isLogoutRequest()) {
+            isCompleted = false;
+        }
+        return super.process(request, response, context);
+    }
+
+    /**
+     * Check whether the authentication or logout request can be handled by the authenticator
+     */
     @Override
     public boolean canHandle(HttpServletRequest request) {
         if (log.isTraceEnabled()) {
@@ -84,7 +92,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 if (authenticatorProperties != null) {
                     enrolUserBody = enrolUser(authenticatorProperties);
                     if (enrolUserBody == null) {
-                        throw new AuthenticationFailedException("Error while ing the QR code");
+                        throw new AuthenticationFailedException("Error while getting the QR code");
                     } else {
                         postContent(response, enrolUserBody);
                         if (log.isDebugEnabled()) {
@@ -218,6 +226,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             isCompleted = true;
             qrCode = null;
             enrolUserBody = null;
+            sessionId = null;
         }
     }
 
@@ -299,6 +308,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
         PrintWriter out = null;
         try {
             out = response.getWriter();
+            response.setIntHeader("Refresh", 5);
             out.println("<title>Tiqr QR</title>" +
                     "<body bgcolor=FFFFFF>");
             out.println("<h2>Scan this QR</h2><br/>" + image);
