@@ -165,9 +165,12 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             }
             String urlToCheckEntrolment = tiqrEP + "/enrol.php";
             int status = 0;
-            int iteration = 0;
             log.info("Waiting for getting enrolment status...");
-            while (true) {
+            int waitingInterval = 30000;
+            int retry = 0;
+            int retryInterval = 1000;
+            int retryCount = waitingInterval/retryInterval;
+            while (retry < retryCount) {
                 try {
                     String res = sendRESTCall(urlToCheckEntrolment, "", "action=getStatus&sessId=" + sessionId, "POST");
                     if (res.startsWith("Failed:")) {
@@ -188,9 +191,9 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                     if (log.isDebugEnabled()) {
                         log.debug("Enrolment pending...");
                     }
-                    Thread.sleep(10000);
-                    iteration++;
-                    if (iteration == 11) {
+                    Thread.sleep(retryInterval);
+                    retry++;
+                    if (retry == retryCount) {
                         log.warn("Enrolment timed out.");
                         break;
                     }
@@ -206,8 +209,8 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 }
             }
             if (status == 5) {
-                context.setSubject("Successfully enrolled the user");
-                log.info("an authorised user");
+                context.setSubject("an authorised user");
+                log.info("Successfully enrolled the user");
             } else {
                 context.setSubject("Enrolment process is failed");
                 throw new AuthenticationFailedException("Enrolment process is Failed");
@@ -301,7 +304,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
         PrintWriter out = null;
         try {
             out = response.getWriter();
-            response.setIntHeader("Refresh", 5);
+            response.setIntHeader("Refresh", 1);
             out.println("<title>Tiqr QR</title>" +
                     "<body bgcolor=FFFFFF>");
             out.println("<h2>Scan this QR</h2><br/>" + image);
