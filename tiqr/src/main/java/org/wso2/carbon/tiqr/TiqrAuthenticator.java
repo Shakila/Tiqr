@@ -208,13 +208,8 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
                 }
             }
             if (status == 5) {
-                String jo = "{\"status\":\""+status+"\"}";
-                Map<String, Object> claims = JSONUtils.parseJSON(jo);
-                if (claims != null && ! claims.isEmpty()) {
-                    context.setSubjectAttributes(getSubjectAttributes(claims));
-                }
                 context.setSubject("Successfully enrolled the user");
-                log.info("Successfully enrolled the user");
+                log.info("an authorised user");
             } else {
                 context.setSubject("Enrolment process is failed");
                 throw new AuthenticationFailedException("Enrolment process is Failed");
@@ -320,30 +315,6 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
         } catch (IOException e) {
             log.error("Unable to show the QR code");
         }
-    }
-
-    /**
-     * @param claimMap
-     * @return
-     */
-
-    protected Map<ClaimMapping, String> getSubjectAttributes(
-            Map<String, Object> claimMap) {
-        Map<ClaimMapping, String> claims = new HashMap<ClaimMapping, String>();
-        if (claimMap != null) {
-            for (Map.Entry<String, Object> entry : claimMap.entrySet()) {
-                claims.put(ClaimMapping.build(entry.getKey(),
-                        entry.getKey(), null, false), entry.getValue()
-                        .toString());
-                if (log.isDebugEnabled()) {
-                    log.debug("Adding claim from end-point data mapping : "
-                            + entry.getKey() + " <> " + " : "
-                            + entry.getValue());
-                }
-
-            }
-        }
-        return claims;
     }
 
     /**
