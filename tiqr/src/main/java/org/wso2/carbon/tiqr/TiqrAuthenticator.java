@@ -20,14 +20,15 @@
 package org.wso2.carbon.tiqr;
 
 import java.io.*;
+import java.lang.Integer;
 import java.net.*;
 import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.FederatedApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
@@ -142,10 +143,17 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
 
         Property clientIP = new Property();
         clientIP.setName(TiqrConstants.TIQR_CLIENTIP);
-        clientIP.setDisplayName("clientIP");
+        clientIP.setDisplayName("Client IP");
         clientIP.setRequired(true);
         clientIP.setDescription("Enter the IP address of the tiqr client");
         configProperties.add(clientIP);
+
+        Property waitTime = new Property();
+        waitTime.setName(TiqrConstants.TIQR_WAIT_TIME);
+        waitTime.setDisplayName("Wait Time");
+        waitTime.setRequired(true);
+        waitTime.setDescription("Period of waiting to terminate the authentication");
+        configProperties.add(waitTime);
         return configProperties;
     }
 
@@ -166,7 +174,7 @@ public class TiqrAuthenticator extends AbstractApplicationAuthenticator implemen
             String urlToCheckEntrolment = tiqrEP + "/enrol.php";
             int status = 0;
             log.info("Waiting for getting enrolment status...");
-            int waitingInterval = 30000;
+            int waitingInterval = Integer.parseInt(authenticatorProperties.get(TiqrConstants.TIQR_WAIT_TIME));
             int retry = 0;
             int retryInterval = 1000;
             int retryCount = waitingInterval/retryInterval;

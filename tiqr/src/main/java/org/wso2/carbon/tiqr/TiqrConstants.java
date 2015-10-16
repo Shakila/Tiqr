@@ -22,5 +22,6 @@ public class TiqrConstants {
     public static final String TIQR_CLIENTIP = "clientIP";
     public static final String ENROLL_USERID = "UserId";
     public static final String ENROLL_DISPLAYNAME = "DiaplayName";
+    public static final String TIQR_WAIT_TIME = "waitTime";
     public static final String TIQR_FRIENDLY_NAME = "Tiqr";
 }
